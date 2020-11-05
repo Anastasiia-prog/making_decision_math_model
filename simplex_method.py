@@ -20,7 +20,7 @@ def W():
    x1 x2 x3 x4 x5  свободные члены
 x4 2  5  2  1  0         12
 x5 7  1  2  0  1         18
-  -3 -4 -6  0  0              <--- коэффициенты при целевой ф-ции со знаком "-" так как задача на max
+  -3 -4 -6  0  0          0    <--- коэффициенты при целевой ф-ции со знаком "-" так как задача на max
 
 3) Выбираем столбец с наименьшей оценкой (у нас это -6 x3)
 4) Исходя из пункта 3 выбираем разрешающий элемент:
@@ -74,6 +74,7 @@ def simplex_table(cond, eq_cond, minmax):
         table.append(from_func)
     elif minmax == 'MIN':
         table.append(func)
+    table[-1].append(0)
 
     count = 0
     while count != len(find_n):
@@ -108,23 +109,25 @@ def perm_element():
 
 # 5) Перерасчитываем значения симплекс-таблицы и разрешающего элемента,
 # пока в последней строке есть отрицательные элементы
+from math import fabs
+
 def recalculation_simplex_table_for_max():
-    temp_simple_tab = simplex_table(cond, eq_cond, minmax)
+    table = simplex_table(cond, eq_cond, minmax)
     perm_el = perm_element()[0]
-    ind_perm = find_min_column()[1]
-    # Для первой строки
-    for i in range(len(temp_simple_tab[0])):
-        temp_simple_tab[0][i] = temp_simple_tab[0][i]/find_min_column()[1]
-    # Для остальных элементов
-    k = perm_element()[1]
-    r = find_min_column()[1]
-    c = 1
-    for i in range(1, len(temp_simple_tab)):
-        for j in range(len(temp_simple_tab[i])-1):
-            temp_simple_tab[i][j] = temp_simple_tab[i][j] - (temp_simple_tab[k][j]*temp_simple_tab[c][r]) / perm_element()[0]
-        c += 1
+    row_ind_perm = perm_element()[1]
+    column_ind_perm = find_min_column()[1]
+    ###
+    fabs_values_from_table = [fabs(i) for i in table[-1]]
+    ###
+    while max(table[-1]) < max(fabs_values_from_table):
+        for j in range(len(table[row_ind_perm])):
+            table[row_ind_perm][j] = table[row_ind_perm][j] / perm_el
+        for i in range(len(table)):
+            if i == row_ind_perm:
+                i += 1
+            for j in range(len(table[i])):
+                table[i][j] = table[i][j] - (table[row_ind_perm][j] * table[i][column_ind_perm]) / perm_el
 
-    return temp_simple_tab
-
+    return table
 
 print(recalculation_simplex_table_for_max())
