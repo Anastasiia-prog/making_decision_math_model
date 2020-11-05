@@ -25,7 +25,7 @@ x5 7  1  2  0  1         18
 3) Выбираем столбец с наименьшей оценкой (у нас это -6 x3)
 4) Исходя из пункта 3 выбираем разрешающий элемент:
 min(12/2; 18/2) = 6 (строка x4)
-5) Отнимаем из второй строке первую, умноженную на 2/2=1.
+5) Далее действуем по правилу прямоугольника: отнимаем из второй строке первую, умноженную на 2/2=1.
 Из третьей строки отнимаем элемент из первой строки того же столбца, умноженный на наим. оценку деленную на 2 (-6/2).
 Делим первую строку на 2.
 Получаем новую таблицу, вводя в базис x3 и выводя из базиса x4.
@@ -39,8 +39,6 @@ r  3  11  0  3  0
 6) В последней строке нет отрицательных элементов, значит задача решена.
 Ответ: 0, 0, 6
 '''
-import numpy as np
-from fractions import Fraction
 
 # 1)
 # Ограничения
@@ -55,82 +53,78 @@ sign = '<='
 func = [3, 4, 6]
 minmax = 'MAX'
 
-class SimplexMethod:
-    def __init__(self, cond, eq_cond, sign, func, minmax):
-        self.cond = cond
-        self.eq_cond = eq_cond
-        self.sign = sign
-        self.func = func
-        self.minmax = minmax
+# Для приведения к каноническому виду
+def kan_form(cond):
+    n = []
+    for i in range(len(cond)):
+        if sign == '<=':
+            n.append(1)
+        elif sign == '>=':
+            n.append(-1)
+    return n
 
-    # Для приведения к каноническому виду
-    @staticmethod
-    def kan_form():
-        n = []
-        for i in range(len(cond)):
-            if sign == '<=':
-                n.append(1)
-            elif sign == '>=':
-                n.append(-1)
-        return n
+# 2) Составляем симплекс-таблицу
+def simplex_table(cond, eq_cond, minmax):
+    find_n = kan_form(cond)
+    table = [cond[i] + [0] * i + [find_n[i]] + [eq_cond[i]] for i in range(len(find_n))]
+    if minmax == 'MAX':
+        from_func = []
+        for i in func:
+            from_func.append(-i)
+        table.append(from_func)
+    elif minmax == 'MIN':
+        table.append(func)
 
-    # 2) Составляем симплекс-таблицу
-    @staticmethod
-    @classmethod
-    def simplex_table(cls):
-        find_n = cls.kan_form()
-        table = [cond[i] + [0] * i + [find_n[i]] + [eq_cond[i]] for i in range(len(find_n))]
+    count = 0
+    while count != len(find_n):
+        table[-1].append(0)
+        count += 1
+    return table
 
-        if minmax == 'MAX':
-            from_func = []
-            for i in func:
-                from_func.append(-i)
-            table.append(from_func)
-        elif minmax == 'MIN':
-            table.append(func)
+# 3) Выбираем столбец с наименьшей оценкой
+def find_min_column():
+    global min_est, index_min
+    if minmax == 'MAX':
+        min_est = min(simplex_table(cond, eq_cond, minmax)[-1])
+        index_min = min(range(len(simplex_table(cond, eq_cond, minmax)[-1])), key=simplex_table(cond, eq_cond, minmax)[-1].__getitem__)
 
-        count = 0
-        while count != len(find_n):
-            table[-1].append(0)
-            count += 1
-        return table
+    return min_est, index_min
 
-        # 3) Выбираем столбец с наименьшей оценкой
+# 4) Исходя из пункта 3 выбираем разрешающий элемент:
+def perm_element():
+    lst_for_find_perm_el = []
+    table = simplex_table(cond, eq_cond, minmax)
+    for i in range(len(table) - 1):
+        lst_for_find_perm_el.append(table[i][-1]/table[i][find_min_column()[1]])
+    for_perm_el = min(lst_for_find_perm_el)
+    for i in range(len(lst_for_find_perm_el)):
+        if lst_for_find_perm_el[i] == for_perm_el:
+            ind_perm_el = i
+    perm_el = simplex_table(cond, eq_cond, minmax)[ind_perm_el][find_min_column()[1]]
+    # найдем индекс столбца разрешающего элемента
+    row_perm_el = min(range(len(lst_for_find_perm_el)),
+                    key=lst_for_find_perm_el.__getitem__)
+    return perm_el, row_perm_el
 
-    @classmethod
-    def find_min_column(cls):
-        global min_est, index_min
-        if minmax == 'MAX':
-            min_est = min(cls.simplex_table()[-1])
-            index_min = min(range(len(cls.simplex_table()[-1])), key=cls.simplex_table()[-1].__getitem__)
+# 5) Перерасчитываем значения симплекс-таблицы и разрешающего элемента,
+# пока в последней строке есть отрицательные элементы
+def recalculation_simplex_table_for_max():
+    temp_simple_tab = simplex_table(cond, eq_cond, minmax)
+    perm_el = perm_element()[0]
+    ind_perm = find_min_column()[1]
+    # Для первой строки
+    for i in range(len(temp_simple_tab[0])):
+        temp_simple_tab[0][i] = temp_simple_tab[0][i]/find_min_column()[1]
+    # Для остальных элементов
+    k = perm_element()[1]
+    r = find_min_column()[1]
+    c = 1
+    for i in range(1, len(temp_simple_tab)):
+        for j in range(len(temp_simple_tab[i])-1):
+            temp_simple_tab[i][j] = temp_simple_tab[i][j] - (temp_simple_tab[k][j]*temp_simple_tab[c][r]) / perm_element()[0]
+        c += 1
 
-        return min_est, index_min
-
-        # 4) Исходя из пункта 3 выбираем разрешающий элемент:
-
-    @classmethod
-    def perm_element(cls):
-        lst_for_find_perm_el = []
-        table = cls.simplex_table()
-        for i in range(len(table) - 1):
-            lst_for_find_perm_el.append(table[i][-1]//table[i][cls.find_min_column()[1]])
-        perm_el = min(lst_for_find_perm_el)
-        return perm_el
-
-        # 5) Перерасчитываем значения симплекс-таблицы и разрешающего элемента,
-        # пока в последней строке есть отрицательные элементы
-
-    @classmethod
-    def count_simplex_table(cls):
-        global perm_element
-        for i in range(len(cls.simplex_table()[-1])):
-            if i < 0:
-                perm_element = cls.perm_element()
-        return perm_element
+    return temp_simple_tab
 
 
-
-sm = SimplexMethod(cond, eq_cond, sign, func, minmax)
-k = sm.perm_element()
-r = sm.count_simplex_table()
-print(r)
+print(recalculation_simplex_table_for_max())
